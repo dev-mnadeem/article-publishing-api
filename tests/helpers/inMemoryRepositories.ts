@@ -53,9 +53,7 @@ export class InMemoryPostRepository implements PostRepository {
     const matched = query.title
       ? this.rows.filter((row) => row.title.toLowerCase().includes(query.title!.toLowerCase()))
       : [...this.rows];
-    const ordered = matched.sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id)
-    );
+    const ordered = matched.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id));
     return { items: ordered.slice(query.offset, query.offset + query.limit), total: ordered.length };
   }
 }

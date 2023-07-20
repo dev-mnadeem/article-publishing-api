@@ -27,6 +27,15 @@ describe('JwtTokenService', () => {
     expect(() => tokens.verify(foreign)).to.throw(UnauthorizedError);
   });
 
+  it('rejects a token signed with the right secret but another algorithm', () => {
+    const otherAlgorithm = jwt.sign({}, config.jwt.secret, {
+      algorithm: 'HS512',
+      subject: 'user-1',
+      issuer: config.jwt.issuer,
+    });
+    expect(() => tokens.verify(otherAlgorithm)).to.throw(UnauthorizedError);
+  });
+
   it('rejects an expired token', () => {
     const expired = jwt.sign({}, config.jwt.secret, {
       subject: 'user-1',

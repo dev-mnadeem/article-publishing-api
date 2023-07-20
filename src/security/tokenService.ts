@@ -3,6 +3,10 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { config } from '../config/env';
 import { UnauthorizedError } from '../errors/apiError';
 
+// Verification accepts exactly the algorithm we sign with, so a token signed
+// with any other algorithm under the same secret is not honoured.
+const ALGORITHM = 'HS256';
+
 export interface AccessToken {
   value: string;
   expiresIn: string;
@@ -32,6 +36,7 @@ export class JwtTokenService implements TokenService {
    */
   issue(userId: string): AccessToken {
     const value = jwt.sign({}, this.secret, {
+      algorithm: ALGORITHM,
       subject: userId,
       issuer: this.issuer,
       expiresIn: this.expiresIn,
@@ -42,7 +47,7 @@ export class JwtTokenService implements TokenService {
   verify(token: string): string {
     let decoded: string | JwtPayload;
     try {
-      decoded = jwt.verify(token, this.secret, { issuer: this.issuer });
+      decoded = jwt.verify(token, this.secret, { issuer: this.issuer, algorithms: [ALGORITHM] });
     } catch {
       throw new UnauthorizedError();
     }
