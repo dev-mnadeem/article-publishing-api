@@ -1,4 +1,4 @@
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 
 import { config } from '../config/env';
 import { UnauthorizedError } from '../errors/apiError';
@@ -39,7 +39,9 @@ export class JwtTokenService implements TokenService {
       algorithm: ALGORITHM,
       subject: userId,
       issuer: this.issuer,
-      expiresIn: this.expiresIn,
+      // JWT_EXPIRES_IN is free text from the environment (e.g. "1h"); the
+      // types only accept ms-style literals.
+      expiresIn: this.expiresIn as SignOptions['expiresIn'],
     });
     return { value, expiresIn: this.expiresIn };
   }
