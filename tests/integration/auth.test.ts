@@ -48,7 +48,7 @@ describe('POST /api/auth/signup', () => {
         .post('/api/auth/signup')
         .send({ ...makeUser(), ...body });
       expect(res.status).to.equal(400);
-      expect(res.body.message).to.be.a('string').and.not.empty;
+      expect(res.body.message).to.be.a('string').with.length.greaterThan(0);
     });
   });
 

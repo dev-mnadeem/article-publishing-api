@@ -30,7 +30,7 @@ export const notFoundHandler = (_req: Request, _res: Response, next: NextFunctio
   next(new NotFoundError('Route not found'));
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Express identifies error handlers by arity.
+// Express identifies error handlers by arity, so `_next` must stay.
 export const errorHandler = (error: unknown, _req: Request, res: Response, _next: NextFunction): void => {
   if (error instanceof ApiError) {
     sendError(res, error.status, error.message);

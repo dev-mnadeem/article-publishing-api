@@ -12,7 +12,7 @@ scripts
 *.log
 .DS_Store
 .mocharc*.json
-.eslintrc.json
+eslint.config.mjs
 .prettierrc.json
 .prettierignore
 README.md
