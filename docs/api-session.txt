@@ -1,117 +1,186 @@
-Captured 2026-09-25T01:46:42Z against a local server on port 8580,
-backed by Postgres 16 seeded with `npm run db:seed` (1 user, 9 posts).
-Responses are piped through `jq` for readability; the bytes on the wire are the same.
+Captured 2026-11-07T20:02:47Z against `docker compose up` (Postgres 16, Node 22 image)
+after `docker compose run --rm migrate npx prisma db seed` (1 user, 9 posts).
+The access token is replaced with its length; everything else is the body as sent.
+$TOKEN is the authtoken returned by the log-in call.
 
-$ curl -s http://localhost:8580/health | jq
+### Health  ->  HTTP 200
+
+$ curl -s -X GET 'http://localhost:8580/health'
 {
   "payload": {
     "status": "ok",
-    "uptime": 5.756606917
+    "uptime": 39.810210059
   }
 }
 
+### Sign up  ->  HTTP 201
 
-$ curl -s -i -X POST http://localhost:8580/api/auth/signup -H 'Content-Type: application/json' -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"analytical1843"}' | sed -n '1p;/^{/p' | jq -R 'fromjson? // .'
-"HTTP/1.1 201 Created\r"
+$ curl -s -X POST 'http://localhost:8580/api/auth/signup' \
+  -H 'Content-Type: application/json' -d '{"name": "Ada Lovelace", "email": "ada@example.com", "password": "analytical1843"}'
 {
   "payload": {
-    "id": "949207c4-ee90-42ae-9821-a52d22bce88a",
+    "id": "aaacd8fa-fe06-461e-a8a4-6bccd89f2e4d",
     "name": "Ada Lovelace",
     "email": "ada@example.com"
   }
 }
 
+### Same email, different case  ->  HTTP 409
 
-$ curl -s -X POST http://localhost:8580/api/auth/signup -H 'Content-Type: application/json' -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"analytical1843"}' | jq
+$ curl -s -X POST 'http://localhost:8580/api/auth/signup' \
+  -H 'Content-Type: application/json' -d '{"name": "Ada Lovelace", "email": "ADA@example.com", "password": "analytical1843"}'
 {
   "payload": {},
   "message": "User already exists"
 }
 
+### Validation failure (first error only)  ->  HTTP 400
 
-$ curl -s -X POST http://localhost:8580/api/auth/signup -H 'Content-Type: application/json' -d '{"name":"Jo","email":"not-an-email","password":"short"}' | jq
+$ curl -s -X POST 'http://localhost:8580/api/auth/signup' \
+  -H 'Content-Type: application/json' -d '{"name": "Jo", "email": "jo@example.com", "password": "short"}'
 {
   "payload": {},
   "message": "password must be at least 8 characters"
 }
 
+### Wrong password  ->  HTTP 401
 
-$ curl -s -X POST http://localhost:8580/api/auth/login -H 'Content-Type: application/json' -d '{"email":"ada@example.com","password":"analytical1843"}' | jq '.payload.authtoken |= (.[0:24] + "...")'
-{
-  "payload": {
-    "authtoken": "<access-token, truncated>",
-    "expiresIn": "1h"
-  }
-}
-
-
-$ # the token's payload, decoded - it carries the user id and nothing else
-$ node -e "console.log(Buffer.from(process.argv[1].split('.')[1],'base64url').toString())" "$TOKEN" | jq
-{
-  "iat": 1790300802,
-  "exp": 1790304402,
-  "iss": "blogs-server",
-  "sub": "949207c4-ee90-42ae-9821-a52d22bce88a"
-}
-
-
-$ curl -s -X POST http://localhost:8580/api/auth/login -H 'Content-Type: application/json' -d '{"email":"ada@example.com","password":"wrong"}' | jq
+$ curl -s -X POST 'http://localhost:8580/api/auth/login' \
+  -H 'Content-Type: application/json' -d '{"email": "ada@example.com", "password": "wrong-password"}'
 {
   "payload": {},
   "message": "Invalid email/password"
 }
 
+### Log in  ->  HTTP 200
 
-$ curl -s http://localhost:8580/api/posts | jq
+$ curl -s -X POST 'http://localhost:8580/api/auth/login' \
+  -H 'Content-Type: application/json' -d '{"email": "ada@example.com", "password": "analytical1843"}'
+{
+  "payload": {
+    "authtoken": "<access token, 216 characters>",
+    "expiresIn": "1h"
+  }
+}
+
+### No token  ->  HTTP 401
+
+$ curl -s -X GET 'http://localhost:8580/api/posts'
 {
   "payload": {},
   "message": "Unauthorized user"
 }
 
+### Create a post (client authorId ignored)  ->  HTTP 201
 
-$ curl -s -X POST http://localhost:8580/api/posts -H "authtoken: $TOKEN" -H 'Content-Type: application/json' -d '{"title":"Notes on the Analytical Engine","content":"The engine weaves algebraic patterns."}' | jq
+$ curl -s -X POST 'http://localhost:8580/api/posts' -H "authtoken: $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"title": "Notes on the Analytical Engine", "content": "The engine weaves algebraic patterns.", "authorId": "someone-else"}'
 {
   "payload": {
-    "id": "a7e2c0f9-fd5b-4cb5-b124-4417a88609fe",
+    "id": "93806dc8-6a44-4230-b1ca-6ffebfa5ee3f",
     "title": "Notes on the Analytical Engine",
     "content": "The engine weaves algebraic patterns.",
-    "authorId": "949207c4-ee90-42ae-9821-a52d22bce88a",
-    "createdAt": "2026-09-25T01:46:43.154Z",
-    "updatedAt": "2026-09-25T01:46:43.154Z"
+    "authorId": "aaacd8fa-fe06-461e-a8a4-6bccd89f2e4d",
+    "createdAt": "2026-11-07T20:02:47.555Z",
+    "updatedAt": "2026-11-07T20:02:47.555Z"
   }
 }
 
+### Second post  ->  HTTP 201
 
-$ curl -s 'http://localhost:8580/api/posts?limit=3' -H "authtoken: $TOKEN" | jq '{payload: [.payload[] | {title, createdAt}], meta}'
+$ curl -s -X POST 'http://localhost:8580/api/posts' -H "authtoken: $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"title": "100% of the work", "content": "A title with a percent sign."}'
+{
+  "payload": {
+    "id": "acec5c33-4a69-4cca-a060-1e801dc42ef0",
+    "title": "100% of the work",
+    "content": "A title with a percent sign.",
+    "authorId": "aaacd8fa-fe06-461e-a8a4-6bccd89f2e4d",
+    "createdAt": "2026-11-07T20:02:47.561Z",
+    "updatedAt": "2026-11-07T20:02:47.561Z"
+  }
+}
+
+### First page of three  ->  HTTP 200
+
+$ curl -s -X GET 'http://localhost:8580/api/posts?limit=3' -H "Authorization: Bearer $TOKEN"
 {
   "payload": [
     {
+      "id": "acec5c33-4a69-4cca-a060-1e801dc42ef0",
+      "title": "100% of the work",
+      "content": "A title with a percent sign.",
+      "authorId": "aaacd8fa-fe06-461e-a8a4-6bccd89f2e4d",
+      "createdAt": "2026-11-07T20:02:47.561Z",
+      "updatedAt": "2026-11-07T20:02:47.561Z"
+    },
+    {
+      "id": "93806dc8-6a44-4230-b1ca-6ffebfa5ee3f",
       "title": "Notes on the Analytical Engine",
-      "createdAt": "2026-09-25T01:46:43.154Z"
+      "content": "The engine weaves algebraic patterns.",
+      "authorId": "aaacd8fa-fe06-461e-a8a4-6bccd89f2e4d",
+      "createdAt": "2026-11-07T20:02:47.555Z",
+      "updatedAt": "2026-11-07T20:02:47.555Z"
     },
     {
+      "id": "fce8b1e8-1000-4427-b6f6-d8326e125173",
       "title": "Learn Nodejs",
-      "createdAt": "2026-09-25T01:46:36.534Z"
-    },
-    {
-      "title": "Introduction to JavaScript",
-      "createdAt": "2026-09-25T01:46:36.534Z"
+      "content": "In this blog, we are going to teach you how to learn Nodejs.",
+      "authorId": "c1a3422e-428e-46b6-84fc-54273eaa4774",
+      "createdAt": "2026-11-07T20:02:22.912Z",
+      "updatedAt": "2026-11-07T20:02:22.912Z"
     }
   ],
   "meta": {
-    "total": 10,
+    "total": 11,
     "page": 1,
     "limit": 3,
     "totalPages": 4
   }
 }
 
+### Last page  ->  HTTP 200
 
-$ curl -s 'http://localhost:8580/api/posts?title=REACT' -H "Authorization: Bearer $TOKEN" | jq '{payload: [.payload[] | {title}], meta}'
+$ curl -s -X GET 'http://localhost:8580/api/posts?limit=3&page=4' -H "Authorization: Bearer $TOKEN"
 {
   "payload": [
     {
-      "title": "Mastering React"
+      "id": "513f9228-c465-4fa4-8209-b0ab184de9ed",
+      "title": "Understanding RESTful APIs",
+      "content": "In this blog series, we'll explain the concepts and principles of RESTful APIs.",
+      "authorId": "c1a3422e-428e-46b6-84fc-54273eaa4774",
+      "createdAt": "2026-11-07T20:02:22.912Z",
+      "updatedAt": "2026-11-07T20:02:22.912Z"
+    },
+    {
+      "id": "2fb4cd12-ada7-4952-bc76-06e30e70a992",
+      "title": "Mastering React",
+      "content": "In this blog series, we'll cover everything you need to know to become a React expert.",
+      "authorId": "c1a3422e-428e-46b6-84fc-54273eaa4774",
+      "createdAt": "2026-11-07T20:02:22.912Z",
+      "updatedAt": "2026-11-07T20:02:22.912Z"
+    }
+  ],
+  "meta": {
+    "total": 11,
+    "page": 4,
+    "limit": 3,
+    "totalPages": 4
+  }
+}
+
+### Case-insensitive title search  ->  HTTP 200
+
+$ curl -s -X GET 'http://localhost:8580/api/posts?title=REACT' -H "authtoken: $TOKEN"
+{
+  "payload": [
+    {
+      "id": "2fb4cd12-ada7-4952-bc76-06e30e70a992",
+      "title": "Mastering React",
+      "content": "In this blog series, we'll cover everything you need to know to become a React expert.",
+      "authorId": "c1a3422e-428e-46b6-84fc-54273eaa4774",
+      "createdAt": "2026-11-07T20:02:22.912Z",
+      "updatedAt": "2026-11-07T20:02:22.912Z"
     }
   ],
   "meta": {
@@ -122,36 +191,57 @@ $ curl -s 'http://localhost:8580/api/posts?title=REACT' -H "Authorization: Beare
   }
 }
 
+### % is matched literally  ->  HTTP 200
 
-$ curl -s 'http://localhost:8580/api/posts?title=kubernetes' -H "authtoken: $TOKEN" | jq
+$ curl -s -X GET 'http://localhost:8580/api/posts?title=%25' -H "authtoken: $TOKEN"
 {
-  "payload": [],
+  "payload": [
+    {
+      "id": "acec5c33-4a69-4cca-a060-1e801dc42ef0",
+      "title": "100% of the work",
+      "content": "A title with a percent sign.",
+      "authorId": "aaacd8fa-fe06-461e-a8a4-6bccd89f2e4d",
+      "createdAt": "2026-11-07T20:02:47.561Z",
+      "updatedAt": "2026-11-07T20:02:47.561Z"
+    }
+  ],
   "meta": {
-    "total": 0,
+    "total": 1,
     "page": 1,
     "limit": 20,
-    "totalPages": 0
+    "totalPages": 1
   }
 }
 
+### Page size over PAGE_MAX_LIMIT  ->  HTTP 400
 
-$ curl -s 'http://localhost:8580/api/posts?limit=500' -H "authtoken: $TOKEN" | jq
+$ curl -s -X GET 'http://localhost:8580/api/posts?limit=500' -H "authtoken: $TOKEN"
 {
   "payload": {},
   "message": "limit must be less than or equal to 100"
 }
 
+### Page number out of range  ->  HTTP 400
 
-$ curl -s http://localhost:8580/api/nope -H "authtoken: $TOKEN" | jq
+$ curl -s -X GET 'http://localhost:8580/api/posts?page=1e20' -H "authtoken: $TOKEN"
 {
   "payload": {},
-  "message": "Route not found"
+  "message": "page must be less than or equal to 1000000"
 }
 
+### Malformed JSON  ->  HTTP 400
 
-$ curl -s -X POST http://localhost:8580/api/auth/login -H 'Content-Type: application/json' -d '{"email":' | jq
+$ curl -s -X POST 'http://localhost:8580/api/auth/login' \
+  -H 'Content-Type: application/json' -d '{"email":'
 {
   "payload": {},
   "message": "Malformed JSON body"
 }
 
+### Unknown route  ->  HTTP 404
+
+$ curl -s -X GET 'http://localhost:8580/api/nope'
+{
+  "payload": {},
+  "message": "Route not found"
+}
