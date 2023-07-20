@@ -57,6 +57,11 @@ describe('POST /api/auth/signup', () => {
     expect(res.status).to.equal(400);
   });
 
+  it('rejects a request with no body at all', async () => {
+    const res = await api().post('/api/auth/signup');
+    expect(res.status).to.equal(400);
+  });
+
   it('ignores unknown fields instead of storing them', async () => {
     const res = await api()
       .post('/api/auth/signup')
