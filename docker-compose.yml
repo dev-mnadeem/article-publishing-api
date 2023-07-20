@@ -21,7 +21,9 @@ services:
       retries: 10
 
   # Runs `prisma migrate deploy` once and exits. The build stage is used
-  # because it is the only one that carries the Prisma CLI.
+  # because it is the only one that carries the Prisma CLI. The same image
+  # runs the seed: `docker compose run --rm migrate npx prisma db seed`, which
+  # loads the app config and so needs JWT_KEY as well.
   migrate:
     build:
       context: .
@@ -29,6 +31,7 @@ services:
     command: ['npx', 'prisma', 'migrate', 'deploy']
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-blogs}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-blogs}
+      JWT_KEY: ${JWT_KEY:?set JWT_KEY in .env - it must be at least 32 characters}
     depends_on:
       db:
         condition: service_healthy
