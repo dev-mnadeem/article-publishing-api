@@ -114,7 +114,7 @@ const main = async (): Promise<void> => {
   for (let run = 0; run < REPEATS; run += 1) {
     const [[rows], ms] = await timed(() =>
       prisma.$transaction([
-        prisma.post.findMany({ orderBy: { createdAt: 'desc' }, take: 20, skip: 0 }),
+        prisma.post.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20, skip: 0 }),
         prisma.post.count({}),
       ])
     );
@@ -128,7 +128,7 @@ const main = async (): Promise<void> => {
     const [, ms] = await timed(() =>
       prisma.post.findMany({
         where: { title: { contains: SEARCH_TERM, mode: 'insensitive' } },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 20,
       })
     );
@@ -136,7 +136,7 @@ const main = async (): Promise<void> => {
   }
 
   const searchPlan = await explain(
-    `SELECT * FROM "Post" WHERE "title" ILIKE '%${SEARCH_TERM}%' ORDER BY "createdAt" DESC LIMIT 20`
+    `SELECT * FROM "Post" WHERE "title" ILIKE '%${SEARCH_TERM}%' ORDER BY "createdAt" DESC, "id" DESC LIMIT 20`
   );
 
   const row = (label: string, value: string) => console.log(`${label.padEnd(44)}${value}`);
