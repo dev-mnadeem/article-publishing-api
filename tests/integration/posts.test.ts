@@ -148,6 +148,12 @@ describe('GET /api/posts', () => {
     expect(res.status).to.equal(400);
   });
 
+  it('answers an absurdly large page number with 400, not 500', async () => {
+    const { token } = await registerAndLogin();
+    const res = await api().get('/api/posts?page=1e20').set('authtoken', token);
+    expect(res.status).to.equal(400);
+  });
+
   it('searches titles case-insensitively on a substring', async () => {
     const { token, userId } = await registerAndLogin();
     await seedPosts(userId, ['Mastering React', 'Learn Nodejs', 'CSS Flexbox Tutorial']);

@@ -47,4 +47,13 @@ describe('validate', () => {
       expect(error).to.be.instanceOf(BadRequestError);
     }
   });
+
+  it('rejects a page number too large to turn into an offset', async () => {
+    try {
+      await validate(listPostsQuerySchema, { page: '1e20' });
+      expect.fail('expected a BadRequestError');
+    } catch (error) {
+      expect(error).to.be.instanceOf(BadRequestError);
+    }
+  });
 });
