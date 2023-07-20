@@ -57,5 +57,8 @@
   "engines": {
     "node": ">=18.17"
   },
-  "main": "dist/src/server.js"
+  "main": "dist/src/server.js",
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
+  }
 }
