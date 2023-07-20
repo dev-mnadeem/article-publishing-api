@@ -30,7 +30,8 @@ export const createApp = (deps: AppDependencies = { authService, postService, to
 
   app.use(cors({ origin: config.corsOrigins, credentials: true }));
   if (config.nodeEnv !== 'test') {
-    app.use(morgan('dev'));
+    // `dev` is coloured and terse; containers want plain Apache-style lines.
+    app.use(morgan(config.nodeEnv === 'production' ? 'combined' : 'dev'));
   }
   app.use(express.json({ limit: '100kb' }));
 
