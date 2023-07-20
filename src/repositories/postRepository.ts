@@ -66,7 +66,7 @@ export class PrismaPostRepository implements PostRepository {
     const [items, total] = await prisma.$transaction([
       prisma.post.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: limit,
         skip: offset,
       }),

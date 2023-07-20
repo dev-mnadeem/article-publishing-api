@@ -26,9 +26,9 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Posts are listed newest first, so the ordering column needs an index once
-  // the table stops fitting in memory.
-  @@index([createdAt(sort: Desc)])
+  // Posts are listed newest first, with id breaking ties so OFFSET pages are
+  // stable. The index matches that ordering.
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
   // Foreign keys are not indexed automatically in Postgres.
   @@index([authorId])
   // Title search is `ILIKE '%term%'`, which no B-tree can serve. A trigram

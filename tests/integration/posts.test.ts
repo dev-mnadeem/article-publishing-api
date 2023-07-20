@@ -149,6 +149,28 @@ describe('GET /api/posts', () => {
     expect(third.body.payload[0].title).to.not.equal(first.body.payload[0].title);
   });
 
+  it('pages through posts that share a timestamp without repeats or gaps', async () => {
+    const { token, userId } = await registerAndLogin();
+    const createdAt = new Date();
+    await prisma.post.createMany({
+      data: Array.from({ length: 23 }, (_, index) => ({
+        title: `Same moment ${index}`,
+        content: 'Body',
+        authorId: userId,
+        createdAt,
+      })),
+    });
+
+    const ids: string[] = [];
+    for (const page of [1, 2, 3, 4]) {
+      const res = await api().get(`/api/posts?limit=7&page=${page}`).set('authtoken', token);
+      ids.push(...res.body.payload.map((post: { id: string }) => post.id));
+    }
+
+    expect(ids).to.have.lengthOf(23);
+    expect(ids).to.deep.equal([...ids].sort().reverse());
+  });
+
   it('caps the page size at PAGE_MAX_LIMIT instead of returning the whole table', async () => {
     const { token } = await registerAndLogin();
     const res = await api()
