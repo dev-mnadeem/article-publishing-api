@@ -36,13 +36,20 @@ export interface PostRepository {
   list(query: PostListQuery): Promise<PostPage>;
 }
 
+/**
+ * Prisma's `contains` becomes `ILIKE '%' || term || '%'` without escaping the
+ * term, so a search for "100%" or "a_b" would treat `%` and `_` as wildcards.
+ * Backslash is Postgres' default LIKE escape character.
+ */
+export const escapeLikePattern = (term: string): string => term.replace(/[\\%_]/g, (char) => `\\${char}`);
+
 export class PrismaPostRepository implements PostRepository {
   create(post: NewPost): Promise<PostRecord> {
     return prisma.post.create({ data: post });
   }
 
   async list({ title, limit, offset }: PostListQuery): Promise<PostPage> {
-    const where = title ? { title: { contains: title, mode: 'insensitive' as const } } : {};
+    const where = title ? { title: { contains: escapeLikePattern(title), mode: 'insensitive' as const } } : {};
 
     // One round trip for the page and its count instead of two.
     const [items, total] = await prisma.$transaction([

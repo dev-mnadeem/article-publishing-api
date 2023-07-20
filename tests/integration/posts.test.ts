@@ -169,6 +169,17 @@ describe('GET /api/posts', () => {
     expect(res.body.meta.total).to.equal(0);
   });
 
+  it('matches % and _ in a search literally instead of as wildcards', async () => {
+    const { token, userId } = await registerAndLogin();
+    await seedPosts(userId, ['100% test coverage', 'Plain title', 'snake_case names', 'snakeXcase names']);
+
+    const percent = await api().get('/api/posts?title=%25').set('authtoken', token);
+    const underscore = await api().get('/api/posts?title=snake_case').set('authtoken', token);
+
+    expect(percent.body.payload.map((post: { title: string }) => post.title)).to.deep.equal(['100% test coverage']);
+    expect(underscore.body.payload.map((post: { title: string }) => post.title)).to.deep.equal(['snake_case names']);
+  });
+
   it('shows every author their posts, not just their own', async () => {
     const authorOne = await registerAndLogin();
     const authorTwo = await registerAndLogin();
