@@ -55,7 +55,7 @@
   },
   "description": "REST API for a small multi-user blog: signup, login, create posts, list and search them.",
   "engines": {
-    "node": ">=18.17"
+    "node": ">=22.12"
   },
   "main": "dist/src/server.js",
   "overrides": {
