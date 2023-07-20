@@ -6,7 +6,11 @@
  * they drop and recreate its tables. Unit tests need no database at all, so a
  * placeholder URL is enough to satisfy config validation.
  */
-import 'dotenv/config';
+import { existsSync } from 'node:fs';
+
+if (existsSync('.env')) {
+  process.loadEnvFile('.env');
+}
 
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL =

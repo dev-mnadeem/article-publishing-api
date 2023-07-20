@@ -1,4 +1,10 @@
-import 'dotenv/config';
+import { existsSync } from 'node:fs';
+
+// Like dotenv: values already in the environment win over the file, and a
+// missing .env (as in the Docker image) is not an error.
+if (existsSync('.env')) {
+  process.loadEnvFile('.env');
+}
 
 export type NodeEnv = 'development' | 'test' | 'production';
 
