@@ -1,0 +1,27 @@
+# dependencies and local environments
+node_modules/
+project_venv/
+
+# build output, coverage, caches
+dist/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+.cache/
+.eslintcache
+
+# environment files (the example is tracked)
+.env
+.env.*
+!.env.example
+
+# logs and scratch
+*.log
+logs/
+tmp/
+
+# OS / editor
+.DS_Store
+
+# no CI configuration in this repository
+.github/

@@ -1,0 +1,95 @@
+$ npm test
+# Captured 2026-09-25T01:46:50Z on Node v22.22.3, against a throwaway Postgres 16 database in TEST_DATABASE_URL.
+
+
+> blogs-server@1.0.0 test
+> mocha
+
+(node:88865) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/dev/Documents/Projects/WAMO/githubs/all_projects/blogs-server/tests/setup.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/dev/Documents/Projects/WAMO/githubs/all_projects/blogs-server/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+  POST /api/auth/signup
+    ✔ creates a user and returns it without the password hash
+    ✔ rejects a duplicate email with 409
+    ✔ treats email addresses case-insensitively
+    ✔ rejects a name shorter than 3 characters with 400
+    ✔ rejects a malformed email with 400
+    ✔ rejects a password shorter than 8 characters with 400
+    ✔ rejects a body with no fields at all
+    ✔ ignores unknown fields instead of storing them
+
+  POST /api/auth/login
+    ✔ returns an access token for correct credentials
+    ✔ gives the same 401 message for an unknown user and a wrong password (76ms)
+    the issued token
+      ✔ carries the user id as `sub` and nothing else
+      ✔ never contains the password hash, the email or the name
+      ✔ expires
+
+  POST /api/posts
+    ✔ creates a post attributed to the authenticated user
+    ✔ accepts the token as an Authorization: Bearer header too
+    ✔ ignores an authorId supplied by the client
+    ✔ rejects an unauthenticated request with 401
+    ✔ rejects a token signed with a different secret
+    ✔ rejects an expired token
+    ✔ rejects a post with a title shorter than 3 characters
+    ✔ rejects a post with no content
+
+  GET /api/posts
+    ✔ returns posts newest first with pagination metadata
+    ✔ returns an empty page rather than an error when there is nothing to show
+    ✔ paginates
+    ✔ caps the page size at PAGE_MAX_LIMIT instead of returning the whole table
+    ✔ searches titles case-insensitively on a substring
+    ✔ returns an empty result for a search that matches nothing
+    ✔ shows every author their posts, not just their own
+    ✔ rejects an unauthenticated request with 401
+
+  unmatched routes
+    ✔ return a 404 in the standard envelope
+
+  GET /health
+    ✔ reports the process is up without requiring a token
+
+  malformed input
+    ✔ answers an unparseable JSON body with 400, not 500
+    ✔ rejects a body larger than the 100kb limit with 413, not 500
+
+  AuthService
+    ✔ stores a hash, never the plaintext password
+    ✔ refuses a second registration for the same email
+    ✔ issues a token whose subject is the registered user id
+    ✔ rejects a wrong password
+    ✔ rejects an unknown email with the same error as a wrong password (68ms)
+
+  PostService
+    ✔ translates a page number into an offset the repository understands
+    ✔ reports the total and page count of a partial last page
+    ✔ reports zero pages when nothing matches
+    ✔ treats an empty search string as no search at all
+    ✔ always stamps the post with the authenticated author, never a client value
+
+  JwtTokenService
+    ✔ round-trips a user id
+    ✔ puts nothing in the payload except sub, iss, iat and exp
+    ✔ rejects a token signed with another secret
+    ✔ rejects a token issued by another service
+    ✔ rejects an expired token
+    ✔ rejects a token with no subject
+    ✔ rejects a syntactically invalid token
+
+  validate
+    ✔ returns the parsed value, with strings trimmed and emails lower-cased
+    ✔ strips unknown keys rather than passing them through
+    ✔ applies query defaults
+    ✔ coerces numeric query strings
+    ✔ turns a schema failure into a BadRequestError carrying the first message
+    ✔ rejects a page number below 1
+
+
+  56 passing (1s)
+

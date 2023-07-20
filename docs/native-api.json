@@ -1,0 +1,41 @@
+{
+  "mode": "Real disposable PostgreSQL, login tokens omitted; browser login, publication and logout verified",
+  "exchanges": [
+    {
+      "request": "POST /api/posts",
+      "status": 201,
+      "response": {
+        "payload": {
+          "id": "a722ce8d-45df-4618-9aa5-007eb3ce5030",
+          "title": "A verified local publishing flow",
+          "content": "This synthetic post was persisted in a disposable PostgreSQL database during native verification.",
+          "authorId": "ede7b4ee-52fb-4177-8b66-5f41dddaed4f",
+          "createdAt": "2026-10-28T16:40:05.931Z",
+          "updatedAt": "2026-10-28T16:40:05.931Z"
+        }
+      }
+    },
+    {
+      "request": "GET /api/posts?title=Published%20through%20the%20browser",
+      "status": 200,
+      "response": {
+        "payload": [
+          {
+            "id": "cf5eccbc-3e27-4679-b3e3-48cbd73cbdb3",
+            "title": "Published through the browser",
+            "content": "This synthetic browser example verifies the real client and API together, with PostgreSQL persistence.",
+            "authorId": "ede7b4ee-52fb-4177-8b66-5f41dddaed4f",
+            "createdAt": "2026-10-28T16:40:07.625Z",
+            "updatedAt": "2026-10-28T16:40:07.625Z"
+          }
+        ],
+        "meta": {
+          "total": 1,
+          "page": 1,
+          "limit": 20,
+          "totalPages": 1
+        }
+      }
+    }
+  ]
+}

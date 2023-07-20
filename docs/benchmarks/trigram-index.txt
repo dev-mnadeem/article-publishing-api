@@ -1,0 +1,77 @@
+# Does the pg_trgm index earn its place?
+# Captured 2026-09-25T01:40:30Z against 50,000 synthetic posts on PostgreSQL 16.15.
+# The pagination total (COUNT over the same filter) cannot ride the createdAt
+# index, so it isolates what the trigram index does.
+
+## COUNT(*) WHERE title ILIKE '%express%'  -- trigram index disabled (the 'before' plan)
+SET
+                                                   QUERY PLAN                                                   
+----------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=3578.63..3578.64 rows=1 width=8) (actual time=26.078..26.082 rows=1 loops=1)
+   Buffers: shared hit=2941
+   ->  Seq Scan on "Post"  (cost=0.00..3566.00 rows=5051 width=0) (actual time=0.006..25.948 rows=5000 loops=1)
+         Filter: (title ~~* '%express%'::text)
+         Rows Removed by Filter: 45000
+         Buffers: shared hit=2941
+ Planning:
+   Buffers: shared hit=116
+ Planning Time: 0.899 ms
+ Execution Time: 26.110 ms
+(10 rows)
+
+
+## COUNT(*) WHERE title ILIKE '%express%'  -- trigram index available
+                                                              QUERY PLAN                                                              
+--------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=3187.17..3187.18 rows=1 width=8) (actual time=5.498..5.500 rows=1 loops=1)
+   Buffers: shared hit=2962
+   ->  Bitmap Heap Scan on "Post"  (cost=78.18..3174.55 rows=5051 width=0) (actual time=1.078..5.374 rows=5000 loops=1)
+         Recheck Cond: (title ~~* '%express%'::text)
+         Heap Blocks: exact=2941
+         Buffers: shared hit=2962
+         ->  Bitmap Index Scan on "Post_title_idx"  (cost=0.00..76.92 rows=5051 width=0) (actual time=0.858..0.858 rows=5000 loops=1)
+               Index Cond: (title ~~* '%express%'::text)
+               Buffers: shared hit=21
+ Planning:
+   Buffers: shared hit=116
+ Planning Time: 0.848 ms
+ Execution Time: 5.555 ms
+(13 rows)
+
+
+## Highly selective: title ILIKE '%part 49999%'  -- trigram index disabled
+SET
+                                                QUERY PLAN                                                 
+-----------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=3566.01..3566.02 rows=1 width=8) (actual time=26.046..26.047 rows=1 loops=1)
+   Buffers: shared hit=2941
+   ->  Seq Scan on "Post"  (cost=0.00..3566.00 rows=5 width=0) (actual time=26.038..26.038 rows=1 loops=1)
+         Filter: (title ~~* '%part 49999%'::text)
+         Rows Removed by Filter: 49999
+         Buffers: shared hit=2941
+ Planning:
+   Buffers: shared hit=116
+ Planning Time: 0.844 ms
+ Execution Time: 26.073 ms
+(10 rows)
+
+
+## Highly selective: title ILIKE '%part 49999%'  -- trigram index available
+                                                           QUERY PLAN                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=88.51..88.52 rows=1 width=8) (actual time=0.618..0.619 rows=1 loops=1)
+   Buffers: shared hit=63
+   ->  Bitmap Heap Scan on "Post"  (cost=69.05..88.50 rows=5 width=0) (actual time=0.614..0.614 rows=1 loops=1)
+         Recheck Cond: (title ~~* '%part 49999%'::text)
+         Rows Removed by Index Recheck: 10
+         Heap Blocks: exact=2
+         Buffers: shared hit=63
+         ->  Bitmap Index Scan on "Post_title_idx"  (cost=0.00..69.05 rows=5 width=0) (actual time=0.600..0.600 rows=11 loops=1)
+               Index Cond: (title ~~* '%part 49999%'::text)
+               Buffers: shared hit=61
+ Planning:
+   Buffers: shared hit=116
+ Planning Time: 0.866 ms
+ Execution Time: 0.668 ms
+(14 rows)
+

@@ -1,0 +1,29 @@
+Loading 50000 posts...
+
+=== blogs-server benchmark ===
+rows in Post: 50000
+search term:  "express"
+repeats:      7 (median reported)
+
+indexes on Post: Post_pkey
+
+list every post (median)                    305.8 ms
+list every post, JSON size                  25.72 MiB
+one page of 20 + total (median)             12.3 ms
+one page of 20, JSON size                   10.0 KiB
+title search, 20 results (median)           20.8 ms
+title search, Postgres execution time       19.87 ms
+
+--- EXPLAIN (ANALYZE, BUFFERS) for the title search ---
+Limit  (cost=3700.41..3700.46 rows=20 width=436) (actual time=19.865..19.866 rows=20 loops=1)
+  Buffers: shared hit=2941
+  ->  Sort  (cost=3700.41..3713.03 rows=5051 width=436) (actual time=19.865..19.866 rows=20 loops=1)
+        Sort Key: "createdAt" DESC
+        Sort Method: top-N heapsort  Memory: 35kB
+        Buffers: shared hit=2941
+        ->  Seq Scan on "Post"  (cost=0.00..3566.00 rows=5051 width=436) (actual time=0.004..19.643 rows=5000 loops=1)
+              Filter: (title ~~* '%express%'::text)
+              Rows Removed by Filter: 45000
+              Buffers: shared hit=2941
+Planning Time: 0.080 ms
+Execution Time: 19.873 ms
