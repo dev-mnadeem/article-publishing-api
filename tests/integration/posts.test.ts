@@ -86,6 +86,15 @@ describe('POST /api/posts', () => {
     expect(res.status).to.equal(401);
   });
 
+  it('rejects a still-valid token whose user has been deleted with 401', async () => {
+    const { token, userId } = await registerAndLogin();
+    await prisma.user.delete({ where: { id: userId } });
+
+    const res = await api().post('/api/posts').set('authtoken', token).send({ title: 'Orphan', content: 'Body' });
+    expect(res.status).to.equal(401);
+    expect(res.body.message).to.equal('Unauthorized user');
+  });
+
   it('rejects a post with a title shorter than 3 characters', async () => {
     const { token } = await registerAndLogin();
     const res = await api().post('/api/posts').set('authtoken', token).send({ title: 'ab', content: 'Body' });

@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { prisma } from '../db/prisma';
 
 export interface PostRecord {
@@ -44,8 +46,17 @@ export interface PostRepository {
 export const escapeLikePattern = (term: string): string => term.replace(/[\\%_]/g, (char) => `\\${char}`);
 
 export class PrismaPostRepository implements PostRepository {
-  create(post: NewPost): Promise<PostRecord> {
-    return prisma.post.create({ data: post });
+  async create(post: NewPost): Promise<PostRecord> {
+    try {
+      return await prisma.post.create({ data: post });
+    } catch (error) {
+      // P2003 is a foreign-key violation: the token is still valid but its
+      // user has been deleted since it was issued.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new UnknownAuthorError(post.authorId);
+      }
+      throw error;
+    }
   }
 
   async list({ title, limit, offset }: PostListQuery): Promise<PostPage> {
@@ -63,5 +74,12 @@ export class PrismaPostRepository implements PostRepository {
     ]);
 
     return { items, total };
+  }
+}
+
+export class UnknownAuthorError extends Error {
+  constructor(authorId: string) {
+    super(`No user with id ${authorId}`);
+    this.name = 'UnknownAuthorError';
   }
 }

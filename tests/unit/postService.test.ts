@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 
+import { UnauthorizedError } from '../../src/errors/apiError';
 import { PostService } from '../../src/services/postService';
 import { listPostsQuerySchema } from '../../src/validation/postSchemas';
 import { validate } from '../../src/validation/validate';
@@ -50,5 +51,16 @@ describe('PostService', () => {
     const created = await new PostService(repo).create('author-42', { title: 'Title', content: 'Body' });
 
     expect(created.authorId).to.equal('author-42');
+  });
+
+  it('answers a post by an author who no longer exists with 401', async () => {
+    const service = new PostService(new InMemoryPostRepository(new Set(['author-1'])));
+
+    try {
+      await service.create('deleted-author', { title: 'Title', content: 'Body' });
+      expect.fail('expected an UnauthorizedError');
+    } catch (error) {
+      expect(error).to.be.instanceOf(UnauthorizedError);
+    }
   });
 });

@@ -1,6 +1,13 @@
 import { randomUUID } from 'crypto';
 
-import { NewPost, PostListQuery, PostPage, PostRecord, PostRepository } from '../../src/repositories/postRepository';
+import {
+  NewPost,
+  PostListQuery,
+  PostPage,
+  PostRecord,
+  PostRepository,
+  UnknownAuthorError,
+} from '../../src/repositories/postRepository';
 import { DuplicateEmailError, NewUser, UserRecord, UserRepository } from '../../src/repositories/userRepository';
 
 /**
@@ -29,7 +36,12 @@ export class InMemoryPostRepository implements PostRepository {
 
   lastQuery: PostListQuery | null = null;
 
+  constructor(private readonly knownAuthorIds?: Set<string>) {}
+
   async create(post: NewPost): Promise<PostRecord> {
+    if (this.knownAuthorIds && !this.knownAuthorIds.has(post.authorId)) {
+      throw new UnknownAuthorError(post.authorId);
+    }
     const now = new Date();
     const row: PostRecord = { id: randomUUID(), createdAt: now, updatedAt: now, ...post };
     this.rows.push(row);
