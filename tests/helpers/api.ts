@@ -4,7 +4,7 @@ import supertest from 'supertest';
 import { createApp } from '../../src/app';
 
 export const app: Express = createApp();
-export const api = (): supertest.SuperTest<supertest.Test> => supertest(app);
+export const api = () => supertest(app);
 
 export interface TestUser {
   name: string;
