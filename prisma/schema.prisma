@@ -1,0 +1,37 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pg_trgm]
+}
+
+model User {
+  id       String @id @default(uuid())
+  email    String @unique
+  name     String
+  password String
+  posts    Post[]
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Posts are listed newest first, so the ordering column needs an index once
+  // the table stops fitting in memory.
+  @@index([createdAt(sort: Desc)])
+  // Foreign keys are not indexed automatically in Postgres.
+  @@index([authorId])
+  // Title search is `ILIKE '%term%'`, which no B-tree can serve. A trigram
+  // GIN index can.
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin)
+}
