@@ -1,0 +1,58 @@
+# Local stack: Postgres, a one-shot migration job, and the API.
+# Reads DATABASE_URL / JWT_KEY / CORS_ORIGINS from the .env file beside this
+# one (copy .env.example first). Host ports stay out of the way of the usual
+# 5432 / 8080 defaults.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-blogs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-blogs}
+    ports:
+      - '${DB_HOST_PORT:-8583}:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-blogs} -d ${POSTGRES_DB:-blogs}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Runs `prisma migrate deploy` once and exits. The build stage is used
+  # because it is the only one that carries the Prisma CLI.
+  migrate:
+    build:
+      context: .
+      target: build
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-blogs}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-blogs}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      target: runtime
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgresql://${POSTGRES_USER:-blogs}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-blogs}
+      JWT_KEY: ${JWT_KEY:?set JWT_KEY in .env - it must be at least 32 characters}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    ports:
+      - '${API_HOST_PORT:-8580}:8080'
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  db-data:
