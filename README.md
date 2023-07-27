@@ -18,11 +18,12 @@ Send the token as `Authorization: Bearer <token>` or in an `authtoken` header. R
 
 ## Getting it running
 
-Requires Node 18.17+ and a PostgreSQL database.
+Validated with Node 22 and a PostgreSQL database.
 
 ```bash
 npm install
 cp .env.example .env     # set DATABASE_URL and JWT_KEY
+npm run db:generate    # generate the Prisma client after installing
 npm run db:migrate
 npm run db:seed          # optional sample data
 npm run dev              # http://localhost:8080
@@ -59,3 +60,37 @@ The integration tests truncate tables, so they refuse to run unless `TEST_DATABA
 - Pagination uses `OFFSET`, which gets slow for deep pages. Keyset pagination on `(createdAt, id)` would fix that.
 - Search is `ILIKE` on titles (backed by a `pg_trgm` index), not full-text search.
 - No token revocation, refresh tokens or rate limiting, and posts can't be edited or deleted.
+
+## Publishing path
+
+```mermaid
+sequenceDiagram
+    participant Browser as React reader client
+    participant API as Express API
+    participant Auth as JWT middleware
+    participant DB as PostgreSQL via Prisma
+    Browser->>API: Login with email and password
+    API->>DB: Load user and compare password hash
+    API-->>Browser: Signed access token
+    Browser->>API: POST /api/posts with Bearer token
+    API->>Auth: Verify signature, expiry and issuer
+    Auth-->>API: Authenticated author ID
+    API->>DB: Insert post bound to that author
+    API-->>Browser: 201 stored post
+    Browser->>API: GET /api/posts with title and pagination
+    API->>DB: Fetch bounded page and count
+    API-->>Browser: Posts and pagination metadata
+```
+
+## Native paired verification
+
+![Real PostgreSQL API responses](docs/screenshots/native-api.png)
+
+The [captured responses](docs/native-api.json) were produced with a disposable
+PostgreSQL database and the real sibling
+[article-reader-client](https://github.com/dev-mnadeem/article-reader-client).
+Browser login, post creation, feed rendering, and logout were checked on the
+built client; access tokens are omitted from the response record.
+
+CI creates an isolated PostgreSQL 16 database, generates Prisma, runs the full
+suite, and builds on Node 22. Docker images remain unverified locally.
