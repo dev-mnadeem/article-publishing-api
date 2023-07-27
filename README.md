@@ -94,3 +94,7 @@ built client; access tokens are omitted from the response record.
 
 CI creates an isolated PostgreSQL 16 database, generates Prisma, runs the full
 suite, and builds on Node 22. Docker images remain unverified locally.
+
+## Author
+
+[**Muhammad Nadeem**](https://github.com/dev-mnadeem)
