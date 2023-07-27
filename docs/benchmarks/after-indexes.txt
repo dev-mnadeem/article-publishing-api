@@ -1,0 +1,27 @@
+Table already holds 50000 posts, reusing it.
+
+=== blogs-server benchmark ===
+rows in Post: 50000
+search term:  "express"
+repeats:      7 (median reported)
+
+indexes on Post: Post_authorId_idx, Post_createdAt_idx, Post_pkey, Post_title_idx
+
+list every post (median)                    298.9 ms
+list every post, JSON size                  25.72 MiB
+one page of 20 + total (median)             3.8 ms
+one page of 20, JSON size                   10.0 KiB
+title search, 20 results (median)           0.5 ms
+title search, Postgres execution time       0.09 ms
+
+--- EXPLAIN (ANALYZE, BUFFERS) for the title search ---
+Limit  (cost=0.29..17.61 rows=20 width=436) (actual time=0.004..0.080 rows=20 loops=1)
+  Buffers: shared hit=14
+  ->  Index Scan using "Post_createdAt_idx" on "Post"  (cost=0.29..4375.29 rows=5051 width=436) (actual time=0.004..0.079 rows=20 loops=1)
+        Filter: (title ~~* '%express%'::text)
+        Rows Removed by Filter: 174
+        Buffers: shared hit=14
+Planning:
+  Buffers: shared hit=1
+Planning Time: 0.056 ms
+Execution Time: 0.085 ms

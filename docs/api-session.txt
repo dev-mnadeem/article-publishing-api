@@ -1,0 +1,157 @@
+Captured 2026-09-25T01:46:42Z against a local server on port 8580,
+backed by Postgres 16 seeded with `npm run db:seed` (1 user, 9 posts).
+Responses are piped through `jq` for readability; the bytes on the wire are the same.
+
+$ curl -s http://localhost:8580/health | jq
+{
+  "payload": {
+    "status": "ok",
+    "uptime": 5.756606917
+  }
+}
+
+
+$ curl -s -i -X POST http://localhost:8580/api/auth/signup -H 'Content-Type: application/json' -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"analytical1843"}' | sed -n '1p;/^{/p' | jq -R 'fromjson? // .'
+"HTTP/1.1 201 Created\r"
+{
+  "payload": {
+    "id": "949207c4-ee90-42ae-9821-a52d22bce88a",
+    "name": "Ada Lovelace",
+    "email": "ada@example.com"
+  }
+}
+
+
+$ curl -s -X POST http://localhost:8580/api/auth/signup -H 'Content-Type: application/json' -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"analytical1843"}' | jq
+{
+  "payload": {},
+  "message": "User already exists"
+}
+
+
+$ curl -s -X POST http://localhost:8580/api/auth/signup -H 'Content-Type: application/json' -d '{"name":"Jo","email":"not-an-email","password":"short"}' | jq
+{
+  "payload": {},
+  "message": "password must be at least 8 characters"
+}
+
+
+$ curl -s -X POST http://localhost:8580/api/auth/login -H 'Content-Type: application/json' -d '{"email":"ada@example.com","password":"analytical1843"}' | jq '.payload.authtoken |= (.[0:24] + "...")'
+{
+  "payload": {
+    "authtoken": "eyJhbGciOiJIUzI1NiIsInR5...",
+    "expiresIn": "1h"
+  }
+}
+
+
+$ # the token's payload, decoded - it carries the user id and nothing else
+$ node -e "console.log(Buffer.from(process.argv[1].split('.')[1],'base64url').toString())" "$TOKEN" | jq
+{
+  "iat": 1790300802,
+  "exp": 1790304402,
+  "iss": "blogs-server",
+  "sub": "949207c4-ee90-42ae-9821-a52d22bce88a"
+}
+
+
+$ curl -s -X POST http://localhost:8580/api/auth/login -H 'Content-Type: application/json' -d '{"email":"ada@example.com","password":"wrong"}' | jq
+{
+  "payload": {},
+  "message": "Invalid email/password"
+}
+
+
+$ curl -s http://localhost:8580/api/posts | jq
+{
+  "payload": {},
+  "message": "Unauthorized user"
+}
+
+
+$ curl -s -X POST http://localhost:8580/api/posts -H "authtoken: $TOKEN" -H 'Content-Type: application/json' -d '{"title":"Notes on the Analytical Engine","content":"The engine weaves algebraic patterns."}' | jq
+{
+  "payload": {
+    "id": "a7e2c0f9-fd5b-4cb5-b124-4417a88609fe",
+    "title": "Notes on the Analytical Engine",
+    "content": "The engine weaves algebraic patterns.",
+    "authorId": "949207c4-ee90-42ae-9821-a52d22bce88a",
+    "createdAt": "2026-09-25T01:46:43.154Z",
+    "updatedAt": "2026-09-25T01:46:43.154Z"
+  }
+}
+
+
+$ curl -s 'http://localhost:8580/api/posts?limit=3' -H "authtoken: $TOKEN" | jq '{payload: [.payload[] | {title, createdAt}], meta}'
+{
+  "payload": [
+    {
+      "title": "Notes on the Analytical Engine",
+      "createdAt": "2026-09-25T01:46:43.154Z"
+    },
+    {
+      "title": "Learn Nodejs",
+      "createdAt": "2026-09-25T01:46:36.534Z"
+    },
+    {
+      "title": "Introduction to JavaScript",
+      "createdAt": "2026-09-25T01:46:36.534Z"
+    }
+  ],
+  "meta": {
+    "total": 10,
+    "page": 1,
+    "limit": 3,
+    "totalPages": 4
+  }
+}
+
+
+$ curl -s 'http://localhost:8580/api/posts?title=REACT' -H "Authorization: Bearer $TOKEN" | jq '{payload: [.payload[] | {title}], meta}'
+{
+  "payload": [
+    {
+      "title": "Mastering React"
+    }
+  ],
+  "meta": {
+    "total": 1,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 1
+  }
+}
+
+
+$ curl -s 'http://localhost:8580/api/posts?title=kubernetes' -H "authtoken: $TOKEN" | jq
+{
+  "payload": [],
+  "meta": {
+    "total": 0,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 0
+  }
+}
+
+
+$ curl -s 'http://localhost:8580/api/posts?limit=500' -H "authtoken: $TOKEN" | jq
+{
+  "payload": {},
+  "message": "limit must be less than or equal to 100"
+}
+
+
+$ curl -s http://localhost:8580/api/nope -H "authtoken: $TOKEN" | jq
+{
+  "payload": {},
+  "message": "Route not found"
+}
+
+
+$ curl -s -X POST http://localhost:8580/api/auth/login -H 'Content-Type: application/json' -d '{"email":' | jq
+{
+  "payload": {},
+  "message": "Malformed JSON body"
+}
+
